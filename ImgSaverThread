@@ -1,0 +1,55 @@
+/**
+* Image saver class. Saves an image in the background. 
+*/
+class ImageSaver : public QObject
+{
+	//based on: http://stackoverflow.com/questions/13878745/correct-way-of-threading-in-qt
+	Q_OBJECT
+public:
+	/**
+	* Constructor, moves itself to a background thread. 
+	*/
+	ImageSaver() : QObject() {
+		moveToThread(&t);
+		t.start();
+	}
+	~ImageSaver() {
+		qDebug("Bye bye!");
+		t.quit();
+		t.wait();
+	}
+
+	/**
+	* Request a new image to be saved. 
+	* @param image the image to save. 
+	* @param absPath the absolute path of where to save the image. 
+	*/
+	void requestImageSave(QImage image, QString absPath) {
+		//thread save way to invoke the save image slot. 
+		QMetaObject::invokeMethod(this, "saveImage", Q_ARG(QImage, image), Q_ARG(QString, absPath));
+	}
+
+	public slots:
+	/**
+	* Needs to be a slot to be invokable with QMetaObject. 
+	* Performs the saving of the image. 
+	* @param image the image to save. 
+	* @param absPath the absolute path of where to save the image. 
+	*/
+	void saveImage(QImage image, QString absPath) {
+		bool saved = image.save(absPath);
+		emit imageReady(image, absPath);
+	}
+
+signals:
+	/**
+	* Signal to connect to after the image has been saved. 
+	*/
+	void imageReady(QImage image, QString path);
+
+private:
+	/**
+	* Worker thread, saves image in this thread and then ends. 
+	*/
+	QThread t;
+};
